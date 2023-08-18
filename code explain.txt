@@ -1,0 +1,93 @@
+Certainly, I'll explain the key parts of the code that implements the Snake game using FastAPI and WebSocket communication.
+
+1. **Imports and Setup:**
+
+    ```python
+    import random
+    import curses
+    import asyncio
+    from fastapi import FastAPI, WebSocket
+
+    app = FastAPI()
+    ```
+
+    - Import necessary modules: `random` for generating random numbers, `curses` for terminal-based UI, `asyncio` for asynchronous tasks, and `FastAPI` for creating the web application.
+    - Create a FastAPI application instance named `app`.
+
+2. **WebSocket Connections Dictionary:**
+
+    ```python
+    connections = {}
+    ```
+
+    - A dictionary to store WebSocket connections for each client.
+
+3. **Game Loop (`game_loop` Function):**
+
+    ```python
+    def game_loop():
+        """
+        Main game loop that handles the Snake game logic.
+        """
+        try:
+            # Set up the terminal screen using curses
+            stdscr = curses.initscr()
+            # ... (curses setup)
+
+            while True:
+                # Handle user input and update game state
+                # ... (Snake movement and collision logic)
+
+                # Send game state to all connected clients
+                for connection in connections.values():
+                    asyncio.create_task(connection.send_text(f"{snake[0][1]},{snake[0][0]},{food[1]},{food[0]}"))
+        finally:
+            curses.endwin()
+    ```
+
+    - The `game_loop` function is the core of the game. It handles Snake movement, collision, and updates the game state.
+    - Inside the loop, user input is processed, the Snake is moved, and collision detection is performed.
+    - The game state (Snake head position and food position) is sent to all connected clients using WebSocket.
+
+4. **WebSocket Endpoint (`websocket_endpoint` Function):**
+
+    ```python
+    @app.websocket("/ws/{client_id}")
+    async def websocket_endpoint(websocket: WebSocket, client_id: int):
+        """
+        WebSocket endpoint for handling client connections.
+        """
+        await websocket.accept()
+        connections[client_id] = websocket
+
+        try:
+            await websocket.receive_text()
+        except WebSocketDisconnect:
+            del connections[client_id]
+    ```
+
+    - This function defines a WebSocket endpoint `/ws/{client_id}` where clients can connect to control their Snakes.
+    - When a client connects, their WebSocket connection is accepted, and the connection is added to the `connections` dictionary.
+    - The function waits to receive text messages from the client (user input for Snake control).
+    - If a WebSocket disconnects (client closes the browser or connection), the connection is removed from the dictionary.
+
+5. **Main Execution:**
+
+    ```python
+    if __name__ == "__main__":
+        asyncio.create_task(game_loop())
+    ```
+
+    - The game loop is started as an asynchronous task when the script is executed directly.
+
+6. **FastAPI Server:**
+
+    You can run the FastAPI application using a command like this:
+
+    ```
+    uvicorn filename:app --host 0.0.0.0 --port 8000
+    ```
+
+    Replace `filename` with the actual name of your Python file. The FastAPI server will start, and players can access the game by opening a web browser and navigating to `http://localhost:8000`.
+
+This implementation creates a multiplayer web-based Snake game using FastAPI and WebSocket communication. Multiple players can join and control their Snakes in the same game session, and the game state is updated in real-time for all connected clients.
